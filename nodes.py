@@ -41,9 +41,11 @@ class ModifiedSDXLVAELoader:
         vae = comfy.sd.VAE(sd=sd)
         model = vae.first_stage_model
 
+        device, dtype = model.device, model.dtype
+
         with torch.no_grad():
-            mockdown = MockDown()
-            mockup = MockUp()
+            mockdown = MockDown().to(device=device, dtype=dtype)
+            mockup = MockUp().to(device=device, dtype=dtype)
 
             # diffusers
             # target_downsampler = model.encoder.down_blocks[0].downsamplers[0]
@@ -52,6 +54,9 @@ class ModifiedSDXLVAELoader:
             # model.encoder.down_blocks[0].downsamplers[0] = mockdown
 
             target_downsampler = model.encoder.down[0].downsample
+
+
+
             mockdown.conv.weight.copy_(target_downsampler.conv.weight)
             mockdown.conv.bias.copy_(target_downsampler.conv.bias)
             model.encoder.down[0].downsample = mockdown
@@ -67,4 +72,6 @@ class ModifiedSDXLVAELoader:
             mockup.conv.weight.copy_(target_upsampler.conv.weight)
             mockup.conv.bias.copy_(target_upsampler.conv.bias)
             model.decoder.up[1].upsample = mockup
+
+        vae.to(device)
         return (vae,)
