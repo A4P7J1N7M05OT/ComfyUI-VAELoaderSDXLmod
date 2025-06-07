@@ -41,7 +41,8 @@ class ModifiedSDXLVAELoader:
         vae = comfy.sd.VAE(sd=sd)
         model = vae.first_stage_model
 
-        device, dtype = model.device, model.dtype
+        p = next(model.parameters())
+        device, dtype = p.device, p.dtype
 
         with torch.no_grad():
             mockdown = MockDown().to(device=device, dtype=dtype)
