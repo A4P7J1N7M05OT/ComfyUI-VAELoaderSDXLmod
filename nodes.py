@@ -74,5 +74,5 @@ class ModifiedSDXLVAELoader:
             mockup.conv.bias.copy_(target_upsampler.conv.bias)
             model.decoder.up[1].upsample = mockup
 
-        vae.to(device)
+        model.to(device)
         return (vae,)
