@@ -4,22 +4,22 @@ import comfy.sd
 import folder_paths
 
 
-class MockDown(nn.Module):
+class Downsample2d(nn.Module):
     def __init__(self):
         super().__init__()
         # original conv has stride = 2
         self.conv = nn.Conv2d(128, 128, kernel_size=3, stride=1, padding="same")
 
-    def forward(self, x):
-        return self.conv(x)
+    def forward(self, hidden_states, *args, **kwargs):
+        return self.conv(hidden_states)
 
-class MockUp(nn.Module):
+class Upsample2D(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding="same")
 
-    def forward(self, x):
-        return self.conv(x)
+    def forward(self, hidden_states, output_size=None, *args, **kwargs):
+        return self.conv(hidden_states)
 
 
 class ModifiedSDXLVAELoader:
@@ -45,8 +45,8 @@ class ModifiedSDXLVAELoader:
         device, dtype = p.device, p.dtype
 
         with torch.no_grad():
-            mockdown = MockDown().to(device=device, dtype=dtype)
-            mockup = MockUp().to(device=device, dtype=dtype)
+            mockdown = Downsample2d().to(device=device, dtype=dtype)
+            mockup = Upsample2D().to(device=device, dtype=dtype)
 
             # diffusers
             # target_downsampler = model.encoder.down_blocks[0].downsamplers[0]
