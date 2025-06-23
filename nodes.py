@@ -50,7 +50,7 @@ class ModifiedSDXLVAELoader:
         dtype = model_management.vae_dtype(device, working_dtypes)
 
         with torch.no_grad():
-            if to_modify == "encoder" or "both":
+            if to_modify in {"encoder", "both"}:
                 mockdown = Downsample2D().to(device=device, dtype=dtype)
 
                 # diffusers
@@ -65,7 +65,7 @@ class ModifiedSDXLVAELoader:
                 mockdown.conv.bias.copy_(target_downsampler.conv.bias)
                 model.encoder.down[0].downsample = mockdown
 
-            if to_modify == "decoder" or "both":
+            if to_modify in {"decoder", "both"}:
                 mockup = Upsample2D().to(device=device, dtype=dtype)
 
                 # diffusers
