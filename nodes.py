@@ -18,6 +18,7 @@ class Downsample2D(nn.Module):
 class Upsample2D(nn.Module):
     def __init__(self):
         super().__init__()
+        # original layer has an F.Interpolate 2x upsampling operation
         self.conv = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding="same")
 
     def forward(self, hidden_states, output_size=None, *args, **kwargs):
@@ -29,7 +30,8 @@ class ModifiedSDXLVAELoader:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "vae_name": (folder_paths.get_filename_list("vae"), ),
+                "vae_name": (folder_paths.get_filename_list("vae"),),
+                "to_modify": (["both", "decoder", "encoder"],),
             },
         }
 
@@ -37,7 +39,7 @@ class ModifiedSDXLVAELoader:
     FUNCTION = "load_modified_vae"
     CATEGORY = "loaders/modified"
 
-    def load_modified_vae(self, vae_name):
+    def load_modified_vae(self, vae_name, to_modify):
         vae_path = folder_paths.get_full_path("vae", vae_name)
         sd = comfy.utils.load_torch_file(vae_path)
         vae = comfy.sd.VAE(sd=sd)
@@ -48,32 +50,35 @@ class ModifiedSDXLVAELoader:
         dtype = model_management.vae_dtype(device, working_dtypes)
 
         with torch.no_grad():
-            mockdown = Downsample2D().to(device=device, dtype=dtype)
-            mockup = Upsample2D().to(device=device, dtype=dtype)
+            if to_modify == "encoder" or "both":
+                mockdown = Downsample2D().to(device=device, dtype=dtype)
 
-            # diffusers
-            # target_downsampler = model.encoder.down_blocks[0].downsamplers[0]
-            # mockdown.conv.weight.copy_(target_downsampler.conv.weight)
-            # mockdown.conv.bias.copy_(target_downsampler.conv.bias)
-            # model.encoder.down_blocks[0].downsamplers[0] = mockdown
+                # diffusers
+                # target_downsampler = model.encoder.down_blocks[0].downsamplers[0]
+                # mockdown.conv.weight.copy_(target_downsampler.conv.weight)
+                # mockdown.conv.bias.copy_(target_downsampler.conv.bias)
+                # model.encoder.down_blocks[0].downsamplers[0] = mockdown
 
-            target_downsampler = model.encoder.down[0].downsample
+                target_downsampler = model.encoder.down[0].downsample
 
-            mockdown.conv.weight.copy_(target_downsampler.conv.weight)
-            mockdown.conv.bias.copy_(target_downsampler.conv.bias)
-            model.encoder.down[0].downsample = mockdown
+                mockdown.conv.weight.copy_(target_downsampler.conv.weight)
+                mockdown.conv.bias.copy_(target_downsampler.conv.bias)
+                model.encoder.down[0].downsample = mockdown
 
-            # diffusers
-            # target_upsampler = model.decoder.up_blocks[2].upsamplers[0]
-            # mockup.conv.weight.copy_(target_upsampler.conv.weight)
-            # mockup.conv.bias.copy_(target_upsampler.conv.bias)
-            # # original layer has some sort of upsampling which gets removed
-            # model.decoder.up_blocks[2].upsamplers[0] = mockup
+            if to_modify == "decoder" or "both":
+                mockup = Upsample2D().to(device=device, dtype=dtype)
 
-            target_upsampler = model.decoder.up[1].upsample
-            mockup.conv.weight.copy_(target_upsampler.conv.weight)
-            mockup.conv.bias.copy_(target_upsampler.conv.bias)
-            model.decoder.up[1].upsample = mockup
+                # diffusers
+                # target_upsampler = model.decoder.up_blocks[2].upsamplers[0]
+                # mockup.conv.weight.copy_(target_upsampler.conv.weight)
+                # mockup.conv.bias.copy_(target_upsampler.conv.bias)
+                # # original layer has some sort of upsampling which gets removed
+                # model.decoder.up_blocks[2].upsamplers[0] = mockup
+
+                target_upsampler = model.decoder.up[1].upsample
+                mockup.conv.weight.copy_(target_upsampler.conv.weight)
+                mockup.conv.bias.copy_(target_upsampler.conv.bias)
+                model.decoder.up[1].upsample = mockup
 
         model.to(device)
         return (vae,)
